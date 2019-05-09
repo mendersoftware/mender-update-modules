@@ -1,0 +1,101 @@
+#!/bin/sh
+
+set -e
+set -x
+
+STATE="$1"
+FILES="$2"
+
+backup_dir="$FILES"/tmp
+dest_dir_file="$FILES"/files/dest_dir
+manifest_file_from_deployment="$FILES"/files/manifest
+update_files_tar="$FILES"/files/update.tar
+
+
+state_dir="/var/lib/mender/dir-overlay-install"
+manifest_file="$state_dir/manifest"
+manifest_file_prev="$state_dir/manifest.prev"
+prev_files_tar="$state_dir/backup.tar"
+
+# Summary of module implementation
+#
+# NOTE! This module stores state in /var/lib/mender
+#
+# In ArtifactInstall state:
+#
+# If a manifest file exists, which means that there has been a previous
+# successful deployment with this module:
+#
+#    1. Create a backup of current deployment, the manifest file
+#       is parsed to determinate which files where installed on last successful
+#       deployment.
+#
+#    2. The current deployment is removed from the system, the manifest file
+#       is parsed to determinate which files where installed on last
+#       successful deployment.
+#
+#    3. Mark the current manifest file as previous (manifest.prev), note at
+#       this stage there is currently no active manifest. It can be restored
+#       in two ways. Either a roll-back is performed or deployment in progress
+#       finishes successfully.
+#
+#    4. Unpack/install content
+#
+# If manifest file does not exist, which means no previous deploy:
+#
+#      1. Unpack/install content
+#
+# In ArtifactCommit state:
+#
+# 1. Restore the "current manifest" file based on the manifest that is part of
+#    the deployment
+#
+
+case "$STATE" in
+
+    NeedsArtifactReboot)
+        echo "No"
+    ;;
+
+    SupportsRollback)
+        echo "Yes"
+    ;;
+
+    ArtifactInstall)
+        dest_dir=$(cat $dest_dir_file)
+        mkdir -p $dest_dir $state_dir
+
+        if [ -e $manifest_file ]; then
+            mkdir -p $backup_dir
+            for file in $(cat $manifest_file); do
+                cp $dest_dir/$file $backup_dir/
+            done
+            tar -cf ${prev_files_tar} -C ${backup_dir} .
+
+            for file in $(cat $manifest_file); do
+                rm $dest_dir/$file
+            done
+
+            mv $manifest_file $manifest_file_prev
+        fi
+
+        mkdir -p ${dest_dir}
+        tar -xf ${update_files_tar} -C ${dest_dir}
+        sync
+        ;;
+
+    ArtifactCommit)
+        mv $manifest_file_from_deployment $manifest_file
+        ;;
+
+    ArtifactRollback)
+        dest_dir=$(cat $dest_dir_file)
+
+        [[ -f $prev_files_tar ]] || exit 0
+
+        cp $manifest_file_prev $manifest_file
+        tar -xf ${prev_files_tar} -C ${dest_dir}
+        ;;
+esac
+
+exit 0
