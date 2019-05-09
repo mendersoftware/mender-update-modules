@@ -18,7 +18,7 @@ For a more detailed tutorial on how to use this Update Module please visit [Mend
 |Requires restart|no|
 |Artifact generation script|yes|
 |Full system updater|no|
-|Source code|[Update Module](https://github.com/mendersoftware/mender-update-modules/tree/master/dir-overlay/module), [Artifact Generator](https://github.com/mendersoftware/mender-update-modules/blob/master/dir-overlay/module-artifact-gen/dir-overlay-artifact-gen)|
+|Source code|[Update Module](https://github.com/mendersoftware/mender-update-modules/tree/master/dir-overlay/module/dir-overlay), [Artifact Generator](https://github.com/mendersoftware/mender-update-modules/blob/master/dir-overlay/module-artifact-gen/dir-overlay-artifact-gen)|
 
 ### Install the Update Module
 
