@@ -68,7 +68,7 @@ case "$STATE" in
         if [ -e $manifest_file ]; then
             mkdir -p $backup_dir
             for file in $(cat $manifest_file); do
-                cp $dest_dir/$file $backup_dir/
+                tar cf - $dest_dir/$file | (cd $backup_dir/ && tar xf -)
             done
             tar -cf ${prev_files_tar} -C ${backup_dir} .
 
