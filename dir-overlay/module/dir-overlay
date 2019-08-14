@@ -91,7 +91,7 @@ case "$STATE" in
     ArtifactRollback)
         dest_dir=$(cat $dest_dir_file)
 
-        [[ -f $prev_files_tar ]] || exit 0
+        test -f $prev_files_tar || exit 0
 
         cp $manifest_file_prev $manifest_file
         tar -xf ${prev_files_tar} -C ${dest_dir}
