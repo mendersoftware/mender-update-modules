@@ -148,7 +148,7 @@ case $dest_dir in
 esac
 
 if [ -d "${file_tree}" ]; then
-  tar -cf ${update_files_tar} -C "${file_tree}" .
+  tar --same-owner -cpf ${update_files_tar} -C "${file_tree}" .
 else
   echo "Error: \"${file_tree}\" is not a directory or does not exit. Aborting."
   exit 1
