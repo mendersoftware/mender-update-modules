@@ -62,15 +62,25 @@ case "$STATE" in
     ;;
 
     ArtifactInstall)
+        if [ $UID -ne 0 ] ; then
+            echo "This update module must be run by a superuser. Aborting..."
+            exit 1
+        fi
+
         dest_dir=$(cat $dest_dir_file)
         mkdir -p $dest_dir $state_dir
 
         if [ -e $manifest_file ]; then
             mkdir -p $backup_dir
+
+            # Copy permissions and ownership from destination directory
+            chmod $(stat -c %a $dest_dir) $backup_dir
+            chown $(stat -c "%U:%G" $dest_dir) $backup_dir
+
             for file in $(cat $manifest_file); do
-                tar cf - $dest_dir/$file | (cd $backup_dir/ && tar xf -)
+                tar -cpf - $dest_dir/$file | (cd $backup_dir/ && tar -xpf -)
             done
-            tar -cf ${prev_files_tar} -C ${backup_dir} .
+            tar -cpf ${prev_files_tar} -C ${backup_dir} .
 
             for file in $(cat $manifest_file); do
                 rm $dest_dir/$file
@@ -80,21 +90,29 @@ case "$STATE" in
         fi
 
         mkdir -p ${dest_dir}
-        tar -xf ${update_files_tar} -C ${dest_dir}
+        tar -xpf ${update_files_tar} -C ${dest_dir}
         sync
         ;;
 
     ArtifactCommit)
+        if [ $UID -ne 0 ] ; then
+            echo "This update module must be run by a superuser. Aborting..."
+            exit 1
+        fi
         mv $manifest_file_from_deployment $manifest_file
         ;;
 
     ArtifactRollback)
+        if [ $UID -ne 0 ] ; then
+            echo "This update module must be run by a superuser. Aborting..."
+            exit 1
+        fi
         dest_dir=$(cat $dest_dir_file)
 
         test -f $prev_files_tar || exit 0
 
         cp $manifest_file_prev $manifest_file
-        tar -xf ${prev_files_tar} -C ${dest_dir}
+        tar -xpf ${prev_files_tar} -C ${dest_dir}
         ;;
 esac
 
