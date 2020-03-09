@@ -1,0 +1,41 @@
+#!/bin/sh
+
+set -e
+
+STATE="$1"
+FILES="$2"
+
+firmware_path="$FILES/files/"
+
+case "$STATE" in
+
+    NeedsArtifactReboot)
+        echo "No"
+    ;;
+
+    SupportsRollback)
+        echo "No"
+    ;;
+
+    ArtifactInstall)
+        firmware_file=$(ls ${firmware_path})
+        if [ ${#firmware_file[@]} -gt 1 ]; then
+            echo "Expected to find only one firmware file, but found: ${firmware_file}"
+            exit 1
+        fi
+
+        # Here you would ensure that your peripheral device enters DFU mode
+        # prior to running the dfu-util. This module was developed using a
+        # reference device which was always in DFU mode.
+        #
+        # How to enter DFU mode is application specific, and hence left out
+        # in this reference module
+
+        dfu-util --alt 1 --download "${firmware_path}"/"${firmware_file}"
+        ;;
+
+    # ArtifactRollback state could be implemented here, but this is highly
+    # application specific and does not fit in to this reference module
+esac
+
+exit 0
