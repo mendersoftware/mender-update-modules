@@ -1,0 +1,108 @@
+#!/bin/sh
+
+set -e
+
+show_help() {
+  cat << EOF
+
+Simple tool to generate Mender Artifact suitable for dfu Update Module
+
+Usage: $0 [options] [-- [options-for-mender-artifact] ]
+
+    Options: [ -f|--firmware-file -n|--artifact-name -t|--device-type -h|--help ]
+
+        --artifact-name     - Artifact name
+        --device-type       - Target device type identification (can be given more than once)
+        --firmware-file     - Firmware file that will be written to the device using dfu-util
+        --help              - Show help and exit
+
+Anything after a '--' gets passed directly to the mender-artifact tool.
+
+EOF
+}
+
+show_help_and_exit_error() {
+  show_help
+  exit 1
+}
+
+check_dependency() {
+  hash "$1" || exit 1
+}
+
+check_dependency mender-artifact
+
+device_types=""
+artifact_name=""
+firmware_file=""
+passthrough=0
+passthrough_args=""
+
+while (( "$#" )); do
+  if test $passthrough -eq 1
+  then
+    passthrough_args="$passthrough_args $1"
+    shift
+    continue
+  fi
+  case "$1" in
+    --device-type | -t)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      device_types="$device_types $1 $2"
+      shift 2
+      ;;
+    --artifact-name | -n)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      artifact_name=$2
+      shift 2
+      ;;
+    --firmware-file | -f)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      firmware_file=$2
+      shift 2
+      ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --)
+      passthrough=1
+      shift
+      ;;
+    *)
+      echo "Error: unsupported option $1"
+      show_help_and_exit_error
+      ;;
+  esac
+done
+
+if [ -z "${artifact_name}" ]; then
+  echo "Artifact name not specified. Aborting."
+  show_help_and_exit_error
+fi
+
+output_path="${artifact_name}.mender"
+
+if [ -z "${device_types}" ]; then
+  echo "Device type not specified. Aborting."
+  show_help_and_exit_error
+fi
+
+mender-artifact write module-image \
+  -T dfu \
+  $device_types \
+  -o $output_path \
+  -n $artifact_name \
+  -f $firmware_file \
+  $passthrough_args
+
+echo "Artifact $output_path generated successfully:"
+mender-artifact read $output_path
+
+exit 0
