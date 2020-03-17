@@ -20,8 +20,25 @@ else
     passive_num=$MENDER_ROOTFS_PART_A_NUMBER
 fi
 
+compare_versions_or_exit() {
+    local COMPARE_VERSIONS="/usr/share/utils/mender-compare-versions"
+
+    if [ ! -x "${COMPARE_VERSIONS}" ]; then
+        echo "Unable to locate mender-compare-versions executable."
+        exit 1
+    fi
+    # This script needs to be provided by the integrator and customized specifically for their naming scheme.
+    if ! "${COMPARE_VERSIONS}" "$(cat header/artifact_name)" "$(cat current_artifact_name)"; then
+        echo "Refusing to install $(cat header/artifact_name) over current version $(cat current_artifact_name)."
+        exit 1
+    fi
+
+    echo "Allowing installation of $(cat header/artifact_name) over current version $(cat current_artifact_name)."
+}
+
 case "$1" in
     Download)
+        compare_versions_or_exit()
         file="$(cat stream-next)"
         cat "$file" > $passive
         if [ "$(cat stream-next)" != "" ]; then
@@ -63,6 +80,7 @@ EOF
         ;;
 
     ArtifactCommit)
+        compare_versions_or_exit()
         fw_setenv upgrade_available 0
         ;;
 
