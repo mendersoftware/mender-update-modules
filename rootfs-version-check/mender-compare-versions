@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+#
+
+import sys
+
+if len(sys.argv) != 3:
+    print("Usage: %s new_version old_version" % sys.argv[0])
+    sys.exit(1)
+
+# Default is to disallow installation
+rc = 1
+
+try:
+    # This assumes the version names are of the form prefix:number
+    # Where prefix is any text.  We simply split on the ':' and
+    # select the last item as the numeric version
+    new_version = sys.argv[1].split(":")[-1]
+    old_version = sys.argv[2].split(":")[-1]
+
+    if int(new_version) > int(old_version):
+        # The new version ordinal is greater.  Allow installation.
+        rc = 0
+except:
+    # Unable to parse the version strings.  Default disallow.
+    pass
+
+sys.exit(rc)

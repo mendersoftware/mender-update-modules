@@ -1,0 +1,96 @@
+#!/bin/sh
+
+set -ue
+
+# Is expected to contain two variable definitions with device paths:
+# - MENDER_ROOTFS_PART_A
+# - MENDER_ROOTFS_PART_B
+. /etc/mender/rootfs-version-check.conf
+
+MENDER_ROOTFS_PART_A_NUMBER="$(echo "$MENDER_ROOTFS_PART_A" | egrep -o '[0-9]+$')"
+MENDER_ROOTFS_PART_B_NUMBER="$(echo "$MENDER_ROOTFS_PART_B" | egrep -o '[0-9]+$')"
+
+active_num="$(fw_printenv mender_boot_part)"
+active_num="${active_num#mender_boot_part=}"
+if test $active_num -eq $MENDER_ROOTFS_PART_A_NUMBER; then
+    passive=$MENDER_ROOTFS_PART_B
+    passive_num=$MENDER_ROOTFS_PART_B_NUMBER
+else
+    passive=$MENDER_ROOTFS_PART_A
+    passive_num=$MENDER_ROOTFS_PART_A_NUMBER
+fi
+
+compare_versions_or_exit() {
+    local COMPARE_VERSIONS="/usr/share/utils/mender-compare-versions"
+
+    if [ ! -x "${COMPARE_VERSIONS}" ]; then
+        echo "Unable to locate mender-compare-versions executable."
+        exit 1
+    fi
+    # This script needs to be provided by the integrator and customized specifically for their naming scheme.
+    if ! "${COMPARE_VERSIONS}" "$(cat header/artifact_name)" "$(cat current_artifact_name)"; then
+        echo "Refusing to install $(cat header/artifact_name) over current version $(cat current_artifact_name)."
+        exit 1
+    fi
+
+    echo "Allowing installation of $(cat header/artifact_name) over current version $(cat current_artifact_name)."
+}
+
+case "$1" in
+    Download)
+        compare_versions_or_exit()
+        file="$(cat stream-next)"
+        cat "$file" > $passive
+        if [ "$(cat stream-next)" != "" ]; then
+            echo "More than one file in payload"
+            exit 1
+        fi
+        ;;
+
+    ArtifactInstall)
+        fw_setenv -s - <<EOF
+mender_boot_part $passive_num
+upgrade_available 1
+bootcount 0
+EOF
+        ;;
+
+    PerformsFullUpdate)
+        echo "Yes"
+        ;;
+
+    NeedsArtifactReboot)
+        echo "Automatic"
+        ;;
+
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
+    ArtifactVerifyReboot)
+        if test "$(fw_printenv upgrade_available)" != "upgrade_available=1"; then
+            exit 1
+        fi
+        ;;
+
+    ArtifactVerifyRollbackReboot)
+        if test "$(fw_printenv upgrade_available)" = "upgrade_available=1"; then
+            exit 1
+        fi
+        ;;
+
+    ArtifactCommit)
+        compare_versions_or_exit()
+        fw_setenv upgrade_available 0
+        ;;
+
+    ArtifactRollback)
+        if test "$(fw_printenv upgrade_available)" = "upgrade_available=1"; then
+            fw_setenv -s - <<EOF
+mender_boot_part $passive_num
+upgrade_available 0
+EOF
+        fi
+        ;;
+esac
+exit 0
