@@ -38,7 +38,7 @@ compare_versions_or_exit() {
 
 case "$1" in
     Download)
-        compare_versions_or_exit()
+        compare_versions_or_exit
         file="$(cat stream-next)"
         cat "$file" > $passive
         if [ "$(cat stream-next)" != "" ]; then
@@ -80,7 +80,7 @@ EOF
         ;;
 
     ArtifactCommit)
-        compare_versions_or_exit()
+        compare_versions_or_exit
         fw_setenv upgrade_available 0
         ;;
 
