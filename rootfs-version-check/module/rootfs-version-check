@@ -21,7 +21,7 @@ else
 fi
 
 compare_versions_or_exit() {
-    local COMPARE_VERSIONS="/usr/share/utils/mender-compare-versions"
+    local COMPARE_VERSIONS="/usr/share/utils/mender/mender-compare-versions"
 
     if [ ! -x "${COMPARE_VERSIONS}" ]; then
         echo "Unable to locate mender-compare-versions executable."
