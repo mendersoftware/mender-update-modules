@@ -51,6 +51,8 @@ prev_files_tar="$state_dir/backup.tar"
 #    the deployment
 #
 
+[ -n "${UID}" ] || UID=$(id -u)
+
 case "$STATE" in
 
     NeedsArtifactReboot)
