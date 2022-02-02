@@ -48,8 +48,10 @@ case "$1" in
         ;;
 
     ArtifactInstall)
+	passive_hex=`printf "%x" $passive_num`
         fw_setenv -s - <<EOF
 mender_boot_part $passive_num
+mender_boot_part_hex $passive_hex
 upgrade_available 1
 bootcount 0
 EOF
@@ -86,8 +88,10 @@ EOF
 
     ArtifactRollback)
         if test "$(fw_printenv upgrade_available)" = "upgrade_available=1"; then
+	    passive_hex=`printf "%x" $passive_num`
             fw_setenv -s - <<EOF
 mender_boot_part $passive_num
+mender_boot_part_hex $passive_hex
 upgrade_available 0
 EOF
         fi
