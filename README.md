@@ -7,7 +7,7 @@ This repository contains community supported Update Modules. An Update Module is
 
 There are a couple of general-purpose Update Modules bundled together with the [Mender client source code](https://github.com/mendersoftware/mender/tree/master/support/modules).
 
-![Mender logo](https://mender.io/user/pages/resources/06.digital-assets/mender.io.png)
+![Mender logo](https://github.com/mendersoftware/mender/raw/master/mender_logo.png)
 
 ## Getting started
 
