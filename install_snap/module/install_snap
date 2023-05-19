@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e
+
+STATE="$1"
+FILES="$2"
+
+case "$STATE" in
+
+    NeedsArtifactReboot)
+        echo "No"
+        ;;
+
+    SupportsRollback)
+        echo "No"
+        ;;
+
+    Download)
+        command -v snap >/dev/null 2>&1 || { echo >&2 "ERROR: Must have snap installed to run this update module."; exit 1; }
+        ;;
+
+    ArtifactInstall)
+        for snap in $(jq -r ".snaps[]" "$FILES"/header/meta-data); do
+            >&2 echo "Installing new snap [$snap]"
+            snap install $snap
+        done
+        ;;
+esac
+
+exit 0
