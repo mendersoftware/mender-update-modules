@@ -1,0 +1,43 @@
+#!/bin/sh
+
+set -e
+
+STATE="$1"
+
+# This is just an example operation that *intentionally* modifies something
+# in the filesystem. You can put any desired action here.
+# The key requirement is that it returns
+# - 0 on success
+# - != 0 on failure 
+dirty_action() {
+    echo "date: $(date), state: $STATE" >> /tmp/dirty
+    return $?
+}
+
+case "$STATE" in
+    NeedsArtifactReboot)
+        echo "No"
+        ;;
+    SupportsRollback)
+        echo "No"
+        ;;
+    Download)
+        exit 0
+        ;;
+    ArtifactInstall)
+        dirty_action
+        exit $?
+        ;;
+        # This is the second part of the dirty trick: the update will *always* fail in
+        # the ArtifactCommit state. It is reached if the operation in ArtifactInstall
+        # completed successfully. So if you read the deployment failure log, you can
+        # see if your operation resulted in
+        # - error: the failure state is ArtifactInstall
+        # - success: the failure state is ArtifactCommit.
+    ArtifactCommit)
+        exit 1
+        ;;
+esac
+
+exit 0
+
