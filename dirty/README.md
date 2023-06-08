@@ -59,8 +59,8 @@ Generate Mender Artifacts using the following command:
 ```
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
-./reboot-artifact-gen --artifact-name ${ARTIFACT_NAME} \
-                      --device-type ${DEVICE_TYPE}
+./dirty-artifact-gen --artifact-name ${ARTIFACT_NAME} \
+                     --device-type ${DEVICE_TYPE}
 ```
 
 ### Maintainer
