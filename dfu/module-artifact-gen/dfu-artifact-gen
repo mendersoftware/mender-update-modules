@@ -44,7 +44,7 @@ firmware_file=""
 passthrough=0
 passthrough_args=""
 
-while (( "$#" )); do
+while [ -n "$1" ]; do
   if test $passthrough -eq 1
   then
     passthrough_args="$passthrough_args $1"
