@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+
+STATE="$1"
+FILES="$2"
+
+case "$STATE" in
+
+    NeedsArtifactReboot)
+		REBOOT=$(jq -r ".reboot" "$FILES"/header/meta-data)
+		if [ "$REBOOT" = "true" ]; then
+			echo "Automatic";
+		else
+        	echo "No";
+		fi
+        ;;
+    ArtifactInstall)
+        swupdate -i "$FILES"/files/*.swu
+        ;;
+esac
+exit 0
