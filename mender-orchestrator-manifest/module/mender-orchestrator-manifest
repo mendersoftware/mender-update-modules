@@ -1,0 +1,105 @@
+#!/bin/sh
+# Copyright 2024 Northern.tech AS
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
+set -e
+
+STATE="$1"
+FILES="$2"
+
+case "$STATE" in
+
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
+    ArtifactInstall)
+        if [ $(ls "$FILES/files/" | wc -l) -ne 1 ]; then
+            echo "Unexpected list of files in artifact:" 1>&2
+            ls "$FILES/files/" 1>&2
+            exit 1
+        fi
+
+        if [ $(ls "$FILES/files"/*.yml 2>/dev/null | wc -l) -eq 1 ]; then
+            MANIFEST="$(ls "$FILES/files"/*.yml)"
+        elif [ $(ls "$FILES/files"/*.yaml 2>/dev/null | wc -l) -eq 1 ]; then
+            MANIFEST="$(ls "$FILES/files"/*.yaml)"
+        else
+            echo "No yaml manifest in artifact:" 1>&2
+            ls "$FILES/files/" 1>&2
+            exit 1
+        fi
+
+        RET=0
+        mender-update-orchestrator \
+            install \
+            --stop-before ArtifactCommit \
+            --stop-before ArtifactRollback \
+            --exit-on-reboot \
+            "$MANIFEST" \
+            || RET=$?
+        if [ $RET -eq 4 ]; then
+            # Needs system reboot, but otherwise successful.
+            exit 0
+        elif [ $RET -eq 0 ]; then
+            # Doesn't need reboot.
+            touch "$FILES/tmp/no-needs-reboot"
+            sync "$FILES/tmp/no-needs-reboot"
+            sync "$FILES/tmp"
+        fi
+        exit $RET
+        ;;
+
+    NeedsArtifactReboot)
+        if [ -e "$FILES/tmp/no-needs-reboot" ]; then
+            echo "No"
+        else
+            echo "Automatic"
+        fi
+        ;;
+
+    ArtifactCommit)
+        mender-update-orchestrator \
+            resume \
+            --stop-before ArtifactRollback \
+            --stop-before Cleanup
+        ;;
+
+    ArtifactRollback)
+        RET=0
+        mender-update-orchestrator \
+            rollback \
+            --stop-before Cleanup \
+            --exit-on-reboot \
+            || RET=$?
+        if [ $RET -eq 4 ]; then
+            # Needs system reboot, but otherwise successful.
+            exit 0
+        elif [ $RET -eq 0 ]; then
+            # Doesn't need reboot. Should already exist, but just in case.
+            touch "$FILES/tmp/no-needs-reboot"
+            sync "$FILES/tmp/no-needs-reboot"
+            sync "$FILES/tmp"
+        fi
+        exit $RET
+        ;;
+
+    Cleanup)
+        mender-update-orchestrator resume
+        ;;
+
+esac
+
+exit 0
+
