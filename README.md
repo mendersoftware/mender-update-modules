@@ -19,6 +19,12 @@ section in [the Mender documentation](https://docs.mender.io/devices/update-modu
 
 You can find detailed information about available Update Modules on [Mender Hub](https://hub.mender.io/c/update-modules).
 
+## Support level
+
+Only modules that appear in the list below are officially supported by Northern.tech.
+
+* `mender-orchestrator-manifest`
+
 ## Contributing
 
 We welcome and ask for your contribution. If you would like to contribute to Mender, please read our guide on how to best get started [contributing code or
