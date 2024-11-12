@@ -22,7 +22,7 @@ For a more detailed tutorial on how to use this Update Module please visit [Mend
 
 Download the latest version of this Update Module by running:
 
-```
+```bash
 mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dfu/module/dfu && chmod +x /usr/share/mender/modules/v3/dfu
 ```
 
@@ -30,13 +30,13 @@ mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 ht
 
 To download `dfu-artifact-gen`, run the following:
 
-```
+```bash
 wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dfu/module-artifact-gen/dfu-artifact-gen && chmod +x dfu-artifact-gen
 ```
 
 Generate Mender Artifacts using the following command:
 
-```
+```bash
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
 ./dfu-artifact-gen --artifact-name ${ARTIFACT_NAME} \

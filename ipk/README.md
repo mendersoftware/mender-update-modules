@@ -22,17 +22,21 @@ For a more detailed tutorial on how to use this Update Module please visit [Mend
 
 Download the latest version of this Update Module by running:
 
-    mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/ipk/module/ipk && chmod +x /usr/share/mender/modules/v3/ipk
+```bash
+mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/ipk/module/ipk && chmod +x /usr/share/mender/modules/v3/ipk
+```
 
 ### Create artifact
 
 Generate Mender Artifacts using the following command:
 
-    ARTIFACT_NAME="my-update-1.0"
-    DEVICE_TYPE="my-device-type"
-    OUTPUT_PATH="my-update-1.0.mender"
-    PACKAGES="my-package-1.ipk my-package-2.ipk"
-    mender-artifact write module-image -T ipk -n ${ARTIFACT_NAME} -t ${DEVICE_TYPE} -o ${OUTPUT_PATH} -f $(echo "$PACKAGES" | sed -e 's/ / -f /g')
+```bash
+ARTIFACT_NAME="my-update-1.0"
+DEVICE_TYPE="my-device-type"
+OUTPUT_PATH="my-update-1.0.mender"
+PACKAGES="my-package-1.ipk my-package-2.ipk"
+mender-artifact write module-image -T ipk -n ${ARTIFACT_NAME} -t ${DEVICE_TYPE} -o ${OUTPUT_PATH} -f $(echo "$PACKAGES" | sed -e 's/ / -f /g')
+```
 
 ### Maintainer
 

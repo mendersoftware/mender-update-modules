@@ -24,26 +24,34 @@ For a more detailed tutorial on how to use this Update Module please visit [Mend
 
 Download the latest version of this Update Module by running:
 
-    mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dir-overlay/module/dir-overlay && chmod +x /usr/share/mender/modules/v3/dir-overlay
+```bash
+mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dir-overlay/module/dir-overlay && chmod +x /usr/share/mender/modules/v3/dir-overlay
+```
 
 ### Create artifact
 
 To download dir-overlay-artifact-gen, run the following:
 
-    wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dir-overlay/module-artifact-gen/dir-overlay-artifact-gen
+```bash
+wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/dir-overlay/module-artifact-gen/dir-overlay-artifact-gen
+```
 
 Make it executable by running,
 
-    chmod +x dir-overlay-artifact-gen
+```bash
+chmod +x dir-overlay-artifact-gen
+```
 
 Generate Mender Artifacts using the following command:
 
-    ARTIFACT_NAME="my-update-1.0"
-    DEVICE_TYPE="my-device-type"
-    OUTPUT_PATH="my-update-1.0.mender"
-    DEST_DIR="/"
-    OVERLAY_TREE="rootfs_overlay"
-    ./dir-overlay-artifact-gen -n ${ARTIFACT_NAME} -t ${DEVICE_TYPE} -d ${DEST_DIR} -o ${OUTPUT_PATH} ${OVERLAY_TREE}
+```bash
+ARTIFACT_NAME="my-update-1.0"
+DEVICE_TYPE="my-device-type"
+OUTPUT_PATH="my-update-1.0.mender"
+DEST_DIR="/"
+OVERLAY_TREE="rootfs_overlay"
+./dir-overlay-artifact-gen -n ${ARTIFACT_NAME} -t ${DEVICE_TYPE} -d ${DEST_DIR} -o ${OUTPUT_PATH} ${OVERLAY_TREE}
+```
 
 ### Maintainer
 
