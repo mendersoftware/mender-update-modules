@@ -19,7 +19,7 @@ Example use-cases:
 |Requires restart|no|
 |Artifact generation script|no|
 |Full operating system updater|no|
-|Source code|[Update Module](https://github.com/mender-update-modules/tree/master/script/module/script)|
+|Source code|[Update Module](https://github.com/mendersoftware/mender-update-modules/tree/master/script/module/script)|
 |Maintainer|Community|
 
 ## Prepare the device
