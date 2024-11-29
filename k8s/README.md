@@ -21,7 +21,7 @@ Example use-cases:
 
 Download the latest version of this Update Module by running:
 
-```
+```bash
 mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/k8s/module/k8s && chmod +x /usr/share/mender/modules/v3/k8s
 ```
 
@@ -31,13 +31,13 @@ This Update Module depends on the `kubectl` CLI.
 
 To download `k8s-artifact-gen`, run the following:
 
-```
+```bash
 wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/k8s/module-artifact-gen/k8s-artifact-gen && chmod +x k8s-artifact-gen
 ```
 
 Generate Mender Artifacts using the following command:
 
-```
+```bash
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
 ./k8s-artifact-gen --artifact-name ${ARTIFACT_NAME} \

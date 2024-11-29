@@ -20,19 +20,21 @@ Example use-cases:
 
 Download the latest version of this Update Module by running:
 
-    mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/swu/module/swu && chmod +x /usr/share/mender/modules/v3/swu
+```bash
+mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/swu/module/swu && chmod +x /usr/share/mender/modules/v3/swu
+```
 
 ### Create artifact
 
 To download `swu-artifact-gen`, run the following:
 
-```
+```bash
 wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/install_snap/module-artifact-gen/install_snap-artifact-gen && chmod +x swu-artifact-gen
 ```
 
 Generate Mender Artifacts using the following command:
 
-```
+```bash
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
 ./swu-artifact-gen \

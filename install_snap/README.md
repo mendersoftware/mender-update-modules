@@ -22,7 +22,7 @@ Example use-cases:
 
 Download the latest version of this Update Module by running:
 
-```
+```bash
 mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/install_snap/module/install_snap && chmod +x /usr/share/mender/modules/v3/install_snap
 ```
 
@@ -30,13 +30,13 @@ mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 ht
 
 To download `install_snap-artifact-gen`, run the following:
 
-```
+```bash
 wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/install_snap/module-artifact-gen/install_snap-artifact-gen && chmod +x install_snap-artifact-gen
 ```
 
 Generate Mender Artifacts using the following command:
 
-```
+```bash
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
 ./install_snap-artifact-gen \

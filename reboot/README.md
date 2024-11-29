@@ -22,7 +22,7 @@ access to the device you have is Mender.
 
 Download the latest version of this Update Module by running:
 
-```
+```bash
 mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/reboot/module/reboot && chmod +x /usr/share/mender/modules/v3/reboot
 ```
 
@@ -30,13 +30,13 @@ mkdir -p /usr/share/mender/modules/v3 && wget -P /usr/share/mender/modules/v3 ht
 
 To download `reboot-artifact-gen`, run the following:
 
-```
+```bash
 wget https://raw.githubusercontent.com/mendersoftware/mender-update-modules/master/reboot/module-artifact-gen/reboot-artifact-gen && chmod +x reboot-artifact-gen
 ```
 
 Generate Mender Artifacts using the following command:
 
-```
+```bash
 ARTIFACT_NAME="my-update-1.0"
 DEVICE_TYPE="my-device-type"
 ./reboot-artifact-gen --artifact-name ${ARTIFACT_NAME} \
