@@ -1,0 +1,117 @@
+#!/bin/sh
+
+set -e
+
+STATE="$1"
+FILES="$2"
+
+# Logging to stderr (stdout reserved for Mender protocol responses)
+log() {
+    echo "persistent-app: $1" >&2
+}
+
+# Read destination directory from artifact (required, no default)
+dest_dir_file="$FILES/files/dest_dir"
+if [ ! -f "$dest_dir_file" ]; then
+    log "Error: dest_dir file missing from artifact"
+    exit 1
+fi
+dest_dir=$(cat "$dest_dir_file")
+backup_dir="${dest_dir}.backup"
+
+do_backup() {
+    if [ -d "$dest_dir" ] && [ "$(ls -A "$dest_dir" 2>/dev/null)" ]; then
+        rm -rf "$backup_dir"
+        mkdir -p "$(dirname "$backup_dir")"
+        cp -a "$dest_dir" "$backup_dir"
+        log "Backed up $dest_dir to $backup_dir"
+    else
+        # Mark that there was no previous content
+        rm -rf "$backup_dir"
+        mkdir -p "$backup_dir"
+        touch "$backup_dir/.was_empty"
+        log "No existing content to back up"
+    fi
+}
+
+do_install() {
+    local payload_dir
+    payload_dir="$FILES/files"
+
+    mkdir -p "$dest_dir"
+
+    # Copy all payload files except dest_dir marker
+    for item in "$payload_dir"/*; do
+        if [ -e "$item" ] && [ "$(basename "$item")" != "dest_dir" ]; then
+            cp -a "$item" "$dest_dir/"
+            log "Installed $(basename "$item") to $dest_dir"
+        fi
+    done
+
+    log "Installation complete to $dest_dir"
+}
+
+do_rollback() {
+    if [ -f "$backup_dir/.was_empty" ]; then
+        rm -rf "$dest_dir"
+        mkdir -p "$dest_dir"
+        log "Rolled back to empty state"
+    elif [ -d "$backup_dir" ] && [ "$(ls -A "$backup_dir" 2>/dev/null)" ]; then
+        rm -rf "$dest_dir"
+        cp -a "$backup_dir" "$dest_dir"
+        log "Rolled back to previous version"
+    else
+        log "No backup found, nothing to restore"
+    fi
+}
+
+do_cleanup() {
+    if [ -d "$backup_dir" ]; then
+        rm -rf "$backup_dir"
+        log "Cleaned up backup"
+    fi
+}
+
+case "$STATE" in
+    NeedsArtifactReboot)
+        echo "No"
+        ;;
+
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
+    ArtifactInstall)
+        log "Starting installation"
+        do_backup
+        if ! do_install; then
+            log "Installation failed, rolling back"
+            do_rollback
+            exit 1
+        fi
+        ;;
+
+    ArtifactCommit)
+        log "Committing update"
+        ;;
+
+    ArtifactRollback)
+        log "Rolling back"
+        do_rollback
+        ;;
+
+    ArtifactFailure)
+        log "Handling failure"
+        ;;
+
+    Cleanup)
+        log "Performing cleanup"
+        do_cleanup
+        ;;
+
+    *)
+        # Ignore unknown states
+        ;;
+esac
+
+exit 0
