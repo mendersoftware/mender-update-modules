@@ -1,0 +1,67 @@
+#!/bin/sh
+
+set -e
+set -x
+
+STATE="$1"
+FILES="$2"
+
+BANNER_FILE="/etc/motd"
+BACKUP_FILE="/tmp/banner.backup"
+
+case "$STATE" in
+    NeedsArtifactReboot)
+        echo "No"
+        ;;
+
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
+    ArtifactInstall)
+        mkdir -p "$(dirname "$BACKUP_FILE")"
+
+        if [ -f "$BANNER_FILE" ]; then
+            cp "$BANNER_FILE" "$BACKUP_FILE"
+        else
+            touch "$BACKUP_FILE"
+        fi
+
+        BANNER_TEXT=$(jq -r '.banner_text' "$FILES/header/meta-data" 2>/dev/null || echo "")
+
+        if [ -z "$BANNER_TEXT" ] || [ "$BANNER_TEXT" = "null" ]; then
+            echo "Error: No banner_text found in metadata"
+            exit 1
+        fi
+
+        echo "$BANNER_TEXT" > "$BANNER_FILE"
+        ;;
+
+    ArtifactRollback)
+        if [ -f "$BACKUP_FILE" ]; then
+            if [ -s "$BACKUP_FILE" ]; then
+                cp "$BACKUP_FILE" "$BANNER_FILE"
+            else
+                rm -f "$BANNER_FILE"
+            fi
+            rm -f "$BACKUP_FILE"
+        fi
+        ;;
+
+    ArtifactCommit)
+        rm -f "$BACKUP_FILE"
+        ;;
+
+    ArtifactFailure)
+        if [ -f "$BACKUP_FILE" ]; then
+            if [ -s "$BACKUP_FILE" ]; then
+                cp "$BACKUP_FILE" "$BANNER_FILE"
+            else
+                rm -f "$BANNER_FILE"
+            fi
+            rm -f "$BACKUP_FILE"
+        fi
+        ;;
+esac
+
+exit 0
