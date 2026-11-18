@@ -1,0 +1,154 @@
+#!/bin/bash
+
+set -e
+
+show_help() {
+  cat << EOF
+
+Tool to generate Mender Artifacts for the fwu Update Module
+
+Usage: $0 [options] image=file... [-- [options-for-mender-artifact]]
+
+    Options:
+
+        -n, --artifact-name     Artifact name (required)
+        -t, --device-type       Target device type (required, repeatable)
+        -o, --output-path       Path to output file (default: fwu.mender)
+        -h, --help              Show help and exit
+
+        image=file              Image name, as listed in /etc/mender/fwu.conf
+                                on the device, and the file to write to it.
+                                All the images of a bank are required.
+
+    Anything after '--' is passed directly to mender-artifact.
+
+Example:
+
+    $0 -n release-2 -t my-device-type -o release-2.mender \\
+       fip=fip.bin bootfs=bootfs.ext4 rootfs=rootfs.ext4
+
+EOF
+}
+
+show_help_and_exit_error() {
+  show_help
+  exit 1
+}
+
+if ! which mender-artifact > /dev/null; then
+  echo "Error: mender-artifact is required but not found." 1>&2
+  echo "Please install mender-artifact: https://docs.mender.io/downloads/workstation-tools#mender-artifact" 1>&2
+  exit 1
+fi
+
+declare -a device_types
+artifact_name=""
+output_path="fwu.mender"
+declare -a images
+passthrough=0
+declare -a passthrough_args
+
+while (( "$#" )); do
+  if test $passthrough -eq 1; then
+    passthrough_args+=("$1")
+    shift
+    continue
+  fi
+  case "$1" in
+    --device-type | -t)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      device_types+=("-t" "$2")
+      shift 2
+      ;;
+    --artifact-name | -n)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      artifact_name=$2
+      shift 2
+      ;;
+    --output-path | -o)
+      if [ -z "$2" ]; then
+        show_help_and_exit_error
+      fi
+      output_path=$2
+      shift 2
+      ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --)
+      passthrough=1
+      shift
+      ;;
+    -*)
+      echo "Error: unsupported option $1"
+      show_help_and_exit_error
+      ;;
+    *=*)
+      images+=("$1")
+      shift
+      ;;
+    *)
+      echo "Error: $1 is not in the image=file form"
+      show_help_and_exit_error
+      ;;
+  esac
+done
+
+if [ -z "${artifact_name}" ]; then
+  echo "Error: Artifact name not specified."
+  show_help_and_exit_error
+fi
+
+if [ ${#device_types[@]} -eq 0 ]; then
+  echo "Error: Device type not specified."
+  show_help_and_exit_error
+fi
+
+if [ ${#images[@]} -eq 0 ]; then
+  echo "Error: No images specified."
+  show_help_and_exit_error
+fi
+
+work_dir=$(mktemp -d)
+trap 'rm -rf "$work_dir"' EXIT
+
+# The Update Module finds the device of an image from the name of its file.
+declare -a file_args
+for item in "${images[@]}"; do
+  image=${item%%=*}
+  file=${item#*=}
+  if [ -z "$image" ] || [ "$image" != "$(basename "$image")" ]; then
+    echo "Error: invalid image name in $item"
+    exit 1
+  fi
+  if [ ! -f "$file" ]; then
+    echo "Error: $file does not exist."
+    exit 1
+  fi
+  if [ -e "$work_dir/$image" ]; then
+    echo "Error: image $image specified twice."
+    exit 1
+  fi
+  cp --reflink=auto "$file" "$work_dir/$image"
+  file_args+=("-f" "$work_dir/$image")
+done
+
+# The whole system is replaced, as with a rootfs-image Artifact.
+mender-artifact write module-image \
+  -T fwu \
+  "${device_types[@]}" \
+  -o "$output_path" \
+  -n "$artifact_name" \
+  --clears-provides "rootfs-image.*" \
+  "${file_args[@]}" \
+  "${passthrough_args[@]}"
+
+echo "Artifact $output_path generated successfully:"
+mender-artifact read "$output_path"
+
+exit 0

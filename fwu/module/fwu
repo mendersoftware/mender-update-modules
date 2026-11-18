@@ -1,0 +1,204 @@
+#!/bin/sh
+
+set -eu
+
+STATE="$1"
+FILES="${2:-}"
+
+CONF="${MENDER_CONF_DIR:-/etc/mender}/fwu.conf"
+NAMESPACE="${MENDER_FWU_NAMESPACE:-fwu}"
+
+# fw_setenv exit code when the metadata has no such bank state (version 1)
+ENOTSUP=95
+
+log() {
+    echo "fwu: $1" >&2
+}
+
+die() {
+    log "$1"
+    exit 1
+}
+
+fwu_get() {
+    fw_printenv -n -m "$NAMESPACE" "$1"
+}
+
+fwu_set() {
+    fw_setenv -m "$NAMESPACE" "$@"
+}
+
+# Print the lines of the configuration file without comments, as:
+#   <image> <device of bank 0> <device of bank 1> ...
+conf_lines() {
+    sed -e 's/#.*//' "$CONF" | awk 'NF > 0'
+}
+
+conf_check() {
+    [ -f "$CONF" ] || die "Cannot read $CONF"
+    conf_lines | awk '
+        NF < 3 { exit 1 }
+        NR > 1 && NF != fields { exit 1 }
+        seen[$1]++ { exit 1 }
+        { fields = NF }
+        END { if (NR == 0) exit 1 }
+    ' || die "Invalid $CONF: each image needs a unique name and one device per bank"
+}
+
+num_banks() {
+    conf_lines | awk 'NR == 1 { print NF - 1 }'
+}
+
+images() {
+    conf_lines | awk '{ print $1 }'
+}
+
+# $1: image, $2: bank
+image_device() {
+    conf_lines | awk -v image="$1" -v field="$(($2 + 2))" '$1 == image { print $field }'
+}
+
+# Device number as major:minor, the format of `mountpoint -d`
+device_number() {
+    echo "$((0x$(stat -L -c '%t' "$1"))):$((0x$(stat -L -c '%T' "$1")))"
+}
+
+# The booted bank is the one holding the mounted root filesystem.
+booted_bank() {
+    root="$(mountpoint -d /)"
+    conf_lines | while read -r _ devices; do
+        bank=0
+        for device in $devices; do
+            if [ -e "$device" ] && [ "$(device_number "$device")" = "$root" ]; then
+                echo "$bank"
+                break 2
+            fi
+            bank=$((bank + 1))
+        done
+    done
+}
+
+check_booted_bank() {
+    booted="$(booted_bank)"
+    [ -n "$booted" ] || die "Mounted root is not on a device listed in $CONF"
+    [ "$booted" = "$1" ] || die "Booted bank ($booted) is not the expected one ($1)"
+}
+
+# A bank being written must not be bootable. FWU metadata version 1 cannot
+# express that, so the bank stays as it is.
+set_bank_invalid() {
+    rc=0
+    fwu_set "bank$1_state" invalid || rc=$?
+    if [ "$rc" = "$ENOTSUP" ]; then
+        log "Cannot mark bank $1 invalid, assuming FWU metadata version 1"
+    elif [ "$rc" != 0 ]; then
+        die "Cannot mark bank $1 invalid"
+    fi
+}
+
+save_banks() {
+    cat > "$FILES/tmp/fwu-banks.tmp" <<EOF
+orig_bank=$1
+new_bank=$2
+EOF
+    sync "$FILES/tmp/fwu-banks.tmp"
+    mv "$FILES/tmp/fwu-banks.tmp" "$FILES/tmp/fwu-banks"
+    sync "$FILES/tmp"
+}
+
+load_banks() {
+    orig_bank=""
+    new_bank=""
+    [ -f "$FILES/tmp/fwu-banks" ] || return 1
+    # shellcheck disable=SC1091 # written by save_banks
+    . "$FILES/tmp/fwu-banks"
+}
+
+case "$STATE" in
+    NeedsArtifactReboot)
+        echo "Automatic"
+        ;;
+
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
+    Download)
+        conf_check
+        active="$(fwu_get active_index)"
+        check_booted_bank "$active"
+        state="$(fwu_get "bank${active}_state")"
+        [ "$state" = accepted ] || die "Bank $active is not accepted ($state), an update is pending"
+
+        new_bank=$(((active + 1) % $(num_banks)))
+        save_banks "$active" "$new_bank"
+        set_bank_invalid "$new_bank"
+
+        missing="$(images)"
+        while true; do
+            stream="$(cat stream-next)"
+            [ -n "$stream" ] || break
+
+            image="$(basename "$stream")"
+            device="$(image_device "$image" "$new_bank")"
+            [ -n "$device" ] || die "Image $image is not listed in $CONF"
+            [ -e "$device" ] || die "Device $device of image $image does not exist"
+
+            log "Writing $image to $device"
+            cat "$stream" > "$device"
+            missing="$(echo "$missing" | grep -v -x -F "$image" || true)"
+        done
+        sync
+
+        [ -z "$missing" ] || die "Images missing in the Artifact: $(echo "$missing" | tr '\n' ' ')"
+        ;;
+
+    ArtifactInstall)
+        load_banks || die "No download to install"
+        active="$(fwu_get active_index)"
+        [ "$active" = "$orig_bank" ] || die "Active bank changed during the update"
+
+        fwu_set previous_active_index "$orig_bank" \
+                active_index "$new_bank" \
+                "bank${new_bank}_state" valid
+        ;;
+
+    ArtifactVerifyReboot)
+        load_banks || die "No update in progress"
+        active="$(fwu_get active_index)"
+        [ "$active" = "$new_bank" ] || die "Update reverted by the firmware, active bank is $active"
+        check_booted_bank "$new_bank"
+        ;;
+
+    ArtifactCommit)
+        active="$(fwu_get active_index)"
+        if load_banks && [ "$active" != "$new_bank" ]; then
+            die "Update reverted by the firmware: refusing to commit!"
+        fi
+        check_booted_bank "$active"
+        state="$(fwu_get "bank${active}_state")"
+        [ "$state" = valid ] || die "Bank $active is not in trial ($state): refusing to commit!"
+
+        fwu_set "bank${active}_state" accepted
+        ;;
+
+    ArtifactRollback)
+        # Without the saved banks nothing was written or activated.
+        load_banks || exit 0
+
+        active="$(fwu_get active_index)"
+        if [ "$active" = "$new_bank" ]; then
+            fwu_set previous_active_index "$new_bank" active_index "$orig_bank"
+        fi
+        set_bank_invalid "$new_bank"
+        ;;
+
+    ArtifactVerifyRollbackReboot)
+        load_banks || exit 0
+        active="$(fwu_get active_index)"
+        [ "$active" = "$orig_bank" ] || die "Active bank is $active after rollback"
+        check_booted_bank "$orig_bank"
+        ;;
+esac
+
+exit 0
